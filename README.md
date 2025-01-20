@@ -84,8 +84,19 @@ The system generates:
 2. Frame-by-frame JSON analysis
 3. Extracted frames with team annotations
 
-## Model
 
+### Detection Visualization
+The output video and frames include:
+- Red boxes: Team 1 players
+- Blue boxes: Team 2 players
+- Green boxes: Referees
+- Player count display for each team
+- Labels indicating player roles and team assignments
+
+Example visualization:
+![Detection Example](docs/detection_example.jpg)
+
+## Model
 
 ### Required YOLO Classes
 The model requires a pre-trained YOLO model that can detect these specific classes:
