@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.env
+venv/
+
+# IDE
+.idea/
+.vscode/
+
+# Project specific
+data/*
+!data/.gitkeep
+output/*
+!output/.gitkeep
+# checkpoints/*
+# !checkpoints/.gitkeep
+
+# # Model files
+# *.pt
+
+# OS generated files
+.DS_Store
+
+# # Video and image files
+# *.mp4
+# *.jpg
+# *.jpeg
+# *.png
