@@ -39,7 +39,9 @@ Tests still to be added
 
 ## Installation
 
-### Using Docker (TO DO)
+### Using Docker 
+
+[TO DO]
 
 ```
 Using docker-compose
