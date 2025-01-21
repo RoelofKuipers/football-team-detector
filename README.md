@@ -13,7 +13,7 @@ This project detects football players in video footage and classifies them into 
 ```
 project/
 ├── data/
-│ └── input_frames/ # Extracted video frames
+│ └── sample_video.mp4
 ├── output/
 │ ├── frames/ # Annotated frames
 │ ├── match_processed.mp4
@@ -27,11 +27,7 @@ project/
 │ ├── player_tracker.py
 │ ├── video_processor.py
 │ └── main.py
-├── api/
-│ ├── __init__.py
-│ └── app.py
 ├── Dockerfile
-├── docker-compose.yml
 ├── requirements.txt
 └── README.md
 ```
@@ -47,7 +43,7 @@ docker build -t football-team-detector .
  
 # Run with video from data directory
 docker run --rm -v $(pwd)/data:/data football-team-detector \
-    python main.py -i /data/match.mp4
+    python main.py -i /data/sample.mp4
 ```
 
 ### Manual Installation
