@@ -12,6 +12,7 @@ venv/
 # Project specific
 data/*
 !data/.gitkeep
+!data/sample.mp4
 output/*
 !output/.gitkeep
 # checkpoints/*

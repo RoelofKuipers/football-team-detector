@@ -4,8 +4,8 @@ ultralytics>=8.0.0  # for YOLOv8
 scikit-learn>=0.24.2
 tqdm>=4.62.2
 
-# API dependencies
-fastapi>=0.68.0
-python-multipart>=0.0.5
-uvicorn>=0.15.0
-aiofiles>=0.7.0
+# # API dependencies
+# fastapi>=0.68.0
+# python-multipart>=0.0.5
+# uvicorn>=0.15.0
+# aiofiles>=0.7.0
