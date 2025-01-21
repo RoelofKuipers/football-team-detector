@@ -41,16 +41,13 @@ Tests still to be added
 
 ### Using Docker 
 
-[TO DO]
-
 ```
-Using docker-compose
-docker-compose up --build
-Or using docker directly
-docker build -t football-team-detector .
-docker run -p 8000:8000 -v $(pwd)/data:/app/data -v $(pwd)/output:/app/output football-team-detector
-```
+# Build first time 
+docker compose build
 
+# Run 
+docker compose run --rm app python main.py -i data/sample.mp4
+```
 
 ### Manual Installation
 Create virtual environment
@@ -74,10 +71,9 @@ python main.py -i path/to/video.mp4
 [TO DO]
 
 ## Requirements
-- Python 3.9+
+- Python 3.11
 - OpenCV
 - YOLOv8
-- FastAPI
 - See requirements.txt for full list
 
 ## Output
