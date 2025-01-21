@@ -42,11 +42,12 @@ Tests still to be added
 ### Using Docker 
 
 ```
-# Build first time 
-docker compose build
-
-# Run 
-docker compose run --rm app python main.py -i data/sample.mp4
+# Build the image
+docker build -t football-team-detector .
+ 
+# Run with video from data directory
+docker run --rm -v $(pwd)/data:/data football-team-detector \
+    python main.py -i /data/match.mp4
 ```
 
 ### Manual Installation
