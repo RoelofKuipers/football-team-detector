@@ -21,7 +21,14 @@ COPY src/ src/
 COPY checkpoints/*.pt checkpoints/
 
 # Create data directory for mounting
-RUN mkdir /data
+RUN mkdir /data /output
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
+ENTRYPOINT ["python", "main.py"]
+
+# Set performance environment variables
+ENV OMP_NUM_THREADS=8 \
+    OPENBLAS_NUM_THREADS=8 \
+    MKL_NUM_THREADS=8 \
+    NUMEXPR_NUM_THREADS=8 \ 
+    YOLO_VERBOSE=False
+
