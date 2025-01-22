@@ -9,3 +9,15 @@ tqdm>=4.62.2
 # python-multipart>=0.0.5
 # uvicorn>=0.15.0
 # aiofiles>=0.7.0
+
+# docker run --rm \
+#     -v $(pwd)/data:/app/data \
+#     -v $(pwd)/output:/app/output \
+#     football-team-detector \
+#     -i /app/data/match.mp4
+
+# docker run --rm \
+#     -v $(pwd)/data:/data \
+#     -v $(pwd)/output:/output \
+#     football-team-detector \
+#     -i /data/sample.mp4
