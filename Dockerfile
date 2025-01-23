@@ -1,4 +1,3 @@
-# Use Python 3.11 base image
 FROM python:3.11-slim
 
 # Set working directory
@@ -21,9 +20,7 @@ COPY src/ src/
 COPY checkpoints/*.pt checkpoints/
 
 # Create data directory for mounting
-RUN mkdir /data /output
-
-ENTRYPOINT ["python", "main.py"]
+RUN mkdir -p app/data app/output
 
 # Set performance environment variables
 ENV OMP_NUM_THREADS=8 \
@@ -32,3 +29,4 @@ ENV OMP_NUM_THREADS=8 \
     NUMEXPR_NUM_THREADS=8 \ 
     YOLO_VERBOSE=False
 
+CMD ["python", "main.py"]
