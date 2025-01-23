@@ -15,9 +15,10 @@ project/
 ├── data/
 │ └── sample_video.mp4
 ├── output/
-│ ├── frames/ # Annotated frames
-│ ├── match_processed.mp4
-│ └── teams_per_frame.json
+│ ├── input_frames/ # Input frames
+│ ├── output_frames/ # Annotated frames
+│ ├── match_processed.mp4 # Annotated video
+│ └── teams_per_frame.json # Frame-by-frame team counts
 ├── checkpoints/
 │ └── yolo_football.pt # Custom YOLO weights
 ├── src/
@@ -31,7 +32,13 @@ project/
 ├── requirements.txt
 └── README.md
 ```
-Tests still to be added
+## To Do
+- Add support for real-time frame-by-frame processing
+- Refactor video processing pipeline to handle streaming input
+- Add API endpoints for single frame processing
+- Add documentation for frame-by-frame usage
+- Add examples for integration with live video feeds
+- Add tests
 
 ## Installation & Usage
 
