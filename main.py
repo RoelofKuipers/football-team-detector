@@ -3,6 +3,7 @@ from pathlib import Path
 from src.video_processor import VideoProcessor
 from src.player_tracker import PlayerTracker
 import sys
+import shutil
 
 # Default paths
 CUSTOM_MODEL_PATH = "checkpoints/yolo_football.pt"  # Path to custom weights
@@ -18,7 +19,7 @@ def parse_args(args):
         "-i",
         required=True,
         type=str,
-        help="Name of the input video file (must be in the 'data' directory)",
+        help="Path to the input video file",
     )
     parser.add_argument(
         "--output", "-o", type=str, default="output", help="Path to output directory"
@@ -43,14 +44,11 @@ def main(args=None):
         args = sys.argv[1:]
     parsed_args = parse_args(args)
 
-    # Ensure the input video is in the 'data' directory
-    base_dir = Path.cwd()
-    input_path = base_dir / "data" / parsed_args.input
+    # Use the provided input path directly
+    input_path = Path(parsed_args.input)
 
     if not input_path.exists():
-        raise FileNotFoundError(
-            f"Input video not found. Please ensure the video is located in the 'data' directory: {input_path}"
-        )
+        raise FileNotFoundError(f"Input video not found: {input_path}")
 
     output_dir = Path(parsed_args.output)
     output_dir.mkdir(exist_ok=True)
@@ -79,6 +77,9 @@ def main(args=None):
 
     video_processor.extract_frames()
     results = player_tracker.process_video(video_processor)
+
+    # Remove the input_frames directory after processing
+    shutil.rmtree(frames_dir)
 
     video_processor.save_results(results)
     video_processor.save_video(

@@ -20,7 +20,7 @@ COPY src/ src/
 COPY checkpoints/*.pt checkpoints/
 
 # Create data directory for mounting
-RUN mkdir -p app/data app/output
+RUN mkdir -p  app/output
 
 # Set performance environment variables
 ENV OMP_NUM_THREADS=8 \

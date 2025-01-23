@@ -4,7 +4,7 @@ from typing import List, Optional, Tuple, Union, Any
 
 import cv2
 import numpy as np
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, MiniBatchKMeans
 from tqdm import tqdm
 
 
@@ -41,7 +41,9 @@ class KitClassifier:
         self.grass_color = self._get_grass_color(frame)
         return self.grass_color
 
-    def get_kit_colors(self, player_imgs: List[np.ndarray]) -> List[np.ndarray]:
+    def get_kit_colors(
+        self, player_imgs: List[np.ndarray], resize_percent: int = 50
+    ) -> List[np.ndarray]:
         """Extract kit colors from cropped player images.
 
         Args:
@@ -60,7 +62,7 @@ class KitClassifier:
         if not all(isinstance(img, np.ndarray) for img in player_imgs):
             raise ValueError("All player images must be numpy arrays")
 
-        return self._get_kits_colors(player_imgs)
+        return self._get_kits_colors(player_imgs, resize_percent=resize_percent)
 
     def train_classifier(self, all_kit_colors: List[np.ndarray]) -> KMeans:
         """Train the classifier on extracted kit colors.
@@ -175,7 +177,9 @@ class KitClassifier:
         self.grass_color = grass_color
         return self.grass_color
 
-    def _get_kits_colors(self, player_imgs: List[np.ndarray]) -> List[np.ndarray]:
+    def _get_kits_colors(
+        self, player_imgs: List[np.ndarray], resize_percent: int = 50
+    ) -> List[np.ndarray]:
         """Find the kit colors of all players in the current frame.
 
         Args:
@@ -215,6 +219,14 @@ class KitClassifier:
                 player_img.shape[1] // 4 : 3 * player_img.shape[1] // 4,
             ]
 
+            # Downsample the image to reduce the number of pixels
+            width = int(player_img.shape[1] * resize_percent / 100)
+            height = int(player_img.shape[0] * resize_percent / 100)
+            dim = (width, height)
+
+            # Resize image
+            player_img = cv2.resize(player_img, dim, interpolation=cv2.INTER_AREA)
+
             # Convert image to HSV color space
             hsv = cv2.cvtColor(player_img, cv2.COLOR_BGR2HSV)
 
@@ -243,9 +255,9 @@ class KitClassifier:
                 pixels_hsv = cv2.cvtColor(
                     pixels.reshape(-1, 1, 3), cv2.COLOR_BGR2HSV
                 ).reshape(-1, 3)
-
-                kmeans = KMeans(
+                kmeans = MiniBatchKMeans(
                     n_clusters=3,
+                    batch_size=len(pixels_hsv) // 10,
                     n_init="auto",
                     init="k-means++",
                     random_state=46,

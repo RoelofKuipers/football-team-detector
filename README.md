@@ -63,10 +63,20 @@ docker build -t football-team-detector .
 
 # Run the container with the video from the data directory
 docker run --rm \
-    -v $(pwd)/data:/app/data:ro \
+    -v $(pwd)/path/to/your/video:/app/input_video:ro \
     -v $(pwd)/output:/app/output \
     football-team-detector \
-    -i sample.mp4
+    -i /app/input_video/your_video.mp4
+```
+
+**Example:** if your video filepath is 'data/sample.mp4'
+you would run:
+```
+docker run --rm \
+    -v $(pwd)/data:/app/input_video:ro \
+    -v $(pwd)/output:/app/output \
+    football-team-detector \
+    -i /app/input_video/sample.mp4
 ```
 
 ### API
