@@ -33,18 +33,7 @@ project/
 ```
 Tests still to be added
 
-## Installation
-
-### Using Docker 
-
-```
-# Build the image
-docker build -t football-team-detector .
- 
-# Run with video from data directory
-docker run --rm -v $(pwd)/data:/data football-team-detector \
-    python main.py -i /data/sample.mp4
-```
+## Installation & Usage
 
 ### Manual Installation
 Create virtual environment
@@ -53,14 +42,24 @@ Create virtual environment
 Install requirements
 `pip install -r requirements.txt`
 
-
-
-## Usage
-
-### Command Line
+#### Usage
 
 ```
 python main.py -i path/to/video.mp4
+```
+
+### Using Docker 
+
+```
+# Build the Docker image
+docker build -t football-team-detector .
+
+# Run the container with the video from the data directory
+docker run --rm \
+    -v $(pwd)/data:/app/data \
+    -v $(pwd)/output:/app/output \
+    football-team-detector \
+    -i /app/data/sample.mp4
 ```
 
 ### API
