@@ -2,12 +2,13 @@ import argparse
 from pathlib import Path
 from src.video_processor import VideoProcessor
 from src.player_tracker import PlayerTracker
+import sys
 
 # Default paths
 CUSTOM_MODEL_PATH = "checkpoints/yolo_football.pt"  # Path to custom weights
 
 
-def parse_args():
+def parse_args(args):
     parser = argparse.ArgumentParser(
         description="Soccer Player Detection and Team Classification",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -18,7 +19,7 @@ def parse_args():
     parser.add_argument(
         "--output", "-o", type=str, default="output", help="Path to output directory"
     )
-    return parser.parse_args()
+    return parser.parse_args(args)
 
 
 def get_model_path():
@@ -33,14 +34,16 @@ def get_model_path():
         )
 
 
-def main():
-    args = parse_args()
+def main(args=None):
+    if args is None:
+        args = sys.argv[1:]
+    parsed_args = parse_args(args)
     # Setup paths
-    input_path = Path(args.input)
+    input_path = Path(parsed_args.input)
     if not input_path.exists():
         raise FileNotFoundError(f"Input video not found: {input_path}")
 
-    output_dir = Path(args.output)
+    output_dir = Path(parsed_args.output)
     output_dir.mkdir(exist_ok=True)
 
     frames_dir = output_dir / "input_frames"

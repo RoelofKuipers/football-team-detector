@@ -29,4 +29,4 @@ ENV OMP_NUM_THREADS=8 \
     NUMEXPR_NUM_THREADS=8 \ 
     YOLO_VERBOSE=False
 
-CMD ["python", "main.py"]
+ENTRYPOINT ["python", "main.py"]
