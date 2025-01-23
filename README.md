@@ -1,6 +1,7 @@
 # Football Team Detection and Classification
 
 This project detects football players in video footage and classifies them into teams based on their kit colors.
+Note: usually not best practice to upload weights and videos to github, but done for simplicity of running the project.
 
 ## Features
 - Player detection using YOLOv8
@@ -33,11 +34,10 @@ project/
 └── README.md
 ```
 ## To Do
-- Add support for real-time frame-by-frame processing
+- Add support for real-time frame-by-frame processing (main next task, input should be a stream, perhaps with a buffer of 10 frames)
 - Refactor video processing pipeline to handle streaming input
-- Add API endpoints for single frame processing
-- Add documentation for frame-by-frame usage
-- Add examples for integration with live video feeds
+- Improve processing speed
+- Create FastAPI for single frame processing
 - Add tests
 
 ## Installation & Usage
