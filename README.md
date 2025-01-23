@@ -50,9 +50,9 @@ Install requirements
 `pip install -r requirements.txt`
 
 #### Usage
-
+Video must be in the data directory
 ```
-python main.py -i path/to/video.mp4
+python main.py -i video_name.mp4
 ```
 
 ### Using Docker 
@@ -63,10 +63,10 @@ docker build -t football-team-detector .
 
 # Run the container with the video from the data directory
 docker run --rm \
-    -v $(pwd)/data:/app/data \
+    -v $(pwd)/data:/app/data:ro \
     -v $(pwd)/output:/app/output \
     football-team-detector \
-    -i /app/data/sample.mp4
+    -i sample.mp4
 ```
 
 ### API

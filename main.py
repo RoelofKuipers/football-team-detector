@@ -14,7 +14,11 @@ def parse_args(args):
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--input", "-i", required=True, type=str, help="Path to input video file"
+        "--input",
+        "-i",
+        required=True,
+        type=str,
+        help="Name of the input video file (must be in the 'data' directory)",
     )
     parser.add_argument(
         "--output", "-o", type=str, default="output", help="Path to output directory"
@@ -38,10 +42,15 @@ def main(args=None):
     if args is None:
         args = sys.argv[1:]
     parsed_args = parse_args(args)
-    # Setup paths
-    input_path = Path(parsed_args.input)
+
+    # Ensure the input video is in the 'data' directory
+    base_dir = Path.cwd()
+    input_path = base_dir / "data" / parsed_args.input
+
     if not input_path.exists():
-        raise FileNotFoundError(f"Input video not found: {input_path}")
+        raise FileNotFoundError(
+            f"Input video not found. Please ensure the video is located in the 'data' directory: {input_path}"
+        )
 
     output_dir = Path(parsed_args.output)
     output_dir.mkdir(exist_ok=True)
