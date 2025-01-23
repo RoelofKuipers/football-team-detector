@@ -44,7 +44,7 @@ def main():
     output_dir.mkdir(exist_ok=True)
 
     frames_dir = output_dir / "input_frames"
-    output_frames_dir = output_dir / "frames"
+    output_frames_dir = output_dir / "output_frames"
 
     frames_dir.mkdir(exist_ok=True)
     output_frames_dir.mkdir(exist_ok=True)
