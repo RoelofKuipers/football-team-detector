@@ -1,63 +1,152 @@
-from src.yolo_model import YoloModel
 from collections import defaultdict
-import numpy as np
-import cv2
-from sklearn.cluster import KMeans
-import tqdm
 from pathlib import Path
+from typing import List, Optional, Tuple, Union, Any
+
+import cv2
+import numpy as np
+from sklearn.cluster import KMeans
 from tqdm import tqdm
 
 
 class KitClassifier:
-    def __init__(self):
+    """Classifier for detecting and categorizing sports team kits/uniforms in images."""
+
+    def __init__(self) -> None:
+        """Initialize the KitClassifier.
+
+        The classifier needs to be trained on kit colors and have grass color extracted
+        before it can classify teams.
         """
-        Initialize TeamDetector with model and parameters
+        self.grass_color: Optional[np.ndarray] = None
+        self.kits_classifier: Optional[KMeans] = None
+        self.left_team_label: Optional[int] = None
+        self.teams: Optional[np.ndarray] = None
+        self.kits_colors: Optional[List[np.ndarray]] = None
+
+    def extract_grass_color(self, frame: Union[str, Path, np.ndarray]) -> np.ndarray:
+        """Extract the dominant grass color from a frame.
 
         Args:
-            model_path: Path to YOLO model (if None, loads default)
-            n_teams: Number of teams to detect (default 2)
-        """
-        self.grass_color = None
-        self.kits_classifier = None
-        self.left_team_label = None
+            frame: Input frame as a file path or numpy array
 
-    def extract_grass_color(self, frame):
-        """Extract grass color from frame"""
+        Returns:
+            np.ndarray: BGR color values of detected grass
+
+        Raises:
+            ValueError: If no grass is found in the image or frame is invalid
+        """
+        if frame is None:
+            raise ValueError("Frame cannot be None")
+
         self.grass_color = self._get_grass_color(frame)
         return self.grass_color
 
-    def get_kit_colors(self, player_imgs):
-        """Extract kit colors from cropped player images"""
+    def get_kit_colors(self, player_imgs: List[np.ndarray]) -> List[np.ndarray]:
+        """Extract kit colors from cropped player images.
+
+        Args:
+            player_imgs: List of cropped player image arrays
+
+        Returns:
+            List[np.ndarray]: BGR color values for each player's kit
+
+        Raises:
+            ValueError: If grass color has not been extracted first or player_imgs is invalid
+        """
         if self.grass_color is None:
             raise ValueError("Must extract grass color first")
+        if not player_imgs:
+            raise ValueError("Player images list cannot be empty")
+        if not all(isinstance(img, np.ndarray) for img in player_imgs):
+            raise ValueError("All player images must be numpy arrays")
+
         return self._get_kits_colors(player_imgs)
 
-    def train_classifier(self, all_kit_colors):
-        """Train the classifier on all kit colors"""
+    def train_classifier(self, all_kit_colors: List[np.ndarray]) -> KMeans:
+        """Train the classifier on extracted kit colors.
+
+        Args:
+            all_kit_colors: List of BGR kit colors to train on
+
+        Returns:
+            KMeans: Trained classifier model
+
+        Raises:
+            ValueError: If kit colors are invalid
+        """
+        if not all_kit_colors:
+            raise ValueError("Kit colors list cannot be empty")
+        if not all(isinstance(color, np.ndarray) for color in all_kit_colors):
+            raise ValueError("All kit colors must be numpy arrays")
+
         self.kits_classifier = self._get_kits_classifier(all_kit_colors)
         return self.kits_classifier
 
-    def classify_teams(self, kit_colors):
-        """Classify kit colors into teams"""
+    def classify_teams(self, kit_colors: List[np.ndarray]) -> np.ndarray:
+        """Classify kit colors into teams.
+
+        Args:
+            kit_colors: List of BGR kit colors to classify
+
+        Returns:
+            np.ndarray: Team labels for each kit color
+
+        Raises:
+            ValueError: If classifier has not been trained or kit colors are invalid
+        """
         if self.kits_classifier is None:
             raise ValueError("Must train classifier first")
+        if not kit_colors:
+            raise ValueError("Kit colors list cannot be empty")
+        if not all(isinstance(color, np.ndarray) for color in kit_colors):
+            raise ValueError("All kit colors must be numpy arrays")
+
         return self._classify_kits(kit_colors)
 
-    def determine_left_team(self, players_boxes, team_labels):
-        """Determine which team is on the left side"""
+    def determine_left_team(
+        self, players_boxes: List[Any], team_labels: np.ndarray
+    ) -> int:
+        """Determine which team is on the left side of the frame.
+
+        Args:
+            players_boxes: Bounding boxes for detected players
+            team_labels: Team classification labels
+
+        Returns:
+            int: Label of the team on the left (0 or 1)
+
+        Raises:
+            ValueError: If player boxes or team labels are empty/invalid
+        """
+        if not players_boxes:
+            raise ValueError("Players boxes list cannot be empty")
+        if not isinstance(team_labels, np.ndarray):
+            raise ValueError("Team labels must be a numpy array")
+        if len(team_labels) == 0:
+            raise ValueError("Team labels array cannot be empty")
+
         self.left_team_label = self._get_left_team_label(players_boxes, team_labels)
         return self.left_team_label
 
-    def _get_grass_color(self, frame=None):
-        """Extract grass color from frame"""
-        # Your existing grass color extraction code
+    def _get_grass_color(self, frame: Union[str, Path, np.ndarray]) -> np.ndarray:
+        """Extract grass color from frame using HSV thresholding.
 
+        Args:
+            frame: Input frame as file path or numpy array
+
+        Returns:
+            np.ndarray: BGR color values of detected grass
+
+        Raises:
+            ValueError: If no grass is found or image cannot be loaded
+        """
         if isinstance(frame, (str, Path)):
             img = cv2.imread(str(frame))
             if img is None:
                 raise ValueError(f"Failed to load image from {frame}")
         else:
-            # Frame is already a numpy array
+            if not isinstance(frame, np.ndarray):
+                raise ValueError("Frame must be a file path or numpy array")
             img = frame
 
         # Convert and threshold in one step
@@ -86,9 +175,8 @@ class KitClassifier:
         self.grass_color = grass_color
         return self.grass_color
 
-    def _get_kits_colors(self, player_imgs):
-        """
-        Finds the kit colors of all the players in the current frame
+    def _get_kits_colors(self, player_imgs: List[np.ndarray]) -> List[np.ndarray]:
+        """Find the kit colors of all players in the current frame.
 
         Args:
             players: List of np.array objects that contain the BGR values of the image
@@ -97,23 +185,29 @@ class KitClassifier:
             the image background.
 
         Returns:
-            kits_colors
-                List of np arrays that contain the BGR values of the kits color of all
-                the players in the current frame
+            List[np.ndarray]: BGR color values for each player's kit
+
+        Raises:
+            ValueError: If grass color has not been extracted or player images are invalid
         """
         if self.grass_color is None:
-            self.grass_color = self._get_grass_color()
+            raise ValueError("Grass color must be extracted first")
+        if not player_imgs:
+            raise ValueError("Player images list cannot be empty")
+
         grass_hsv = cv2.cvtColor(
             np.uint8([[list(self.grass_color)]]), cv2.COLOR_BGR2HSV
         )
         kits_colors = []
         kits_masks = []
-        if len(player_imgs) > 200:  # tmp fix for too many players
+        if len(player_imgs) > 200:
             player_imgs_iter = tqdm(player_imgs, desc="Processing players")
         else:
             player_imgs_iter = player_imgs
 
         for player_img in player_imgs_iter:
+            if not isinstance(player_img, np.ndarray):
+                raise ValueError("Each player image must be a numpy array")
 
             # Take the middle 1/2 of the image in both directions
             player_img = player_img[
@@ -152,7 +246,7 @@ class KitClassifier:
 
                 kmeans = KMeans(
                     n_clusters=3,
-                    n_init="auto",  # Let sklearn choose optimal number
+                    n_init="auto",
                     init="k-means++",
                     random_state=46,
                     max_iter=300,  # Increase max iterations
@@ -192,23 +286,28 @@ class KitClassifier:
                 kit_color = np.array(cv2.mean(player_img, mask=mask)[:3])
 
             kits_colors.append(kit_color)
-        # self.kits_colors = kits_colors
         return kits_colors
 
-    def _get_kits_classifier(self, kits_colors, n_clusters=3):
-        """
-        Creates a K-Means classifier that can classify the kits accroding to their BGR
-        values into 2 different clusters each of them represents one of the teams
+    def _get_kits_classifier(
+        self, kits_colors: List[np.ndarray], n_clusters: int = 3
+    ) -> KMeans:
+        """Create a K-Means classifier for team kit colors.
 
         Args:
-            kits_colors: List of np.array objects that contain the BGR values of
-            the colors of the kits of the players found in the current frame.
+            kits_colors: List of BGR kit colors to train on
+            n_clusters: Number of clusters/teams to detect
 
         Returns:
-            kits_kmeans
-                sklearn.cluster.KMeans object that can classify the players kits into
-                2 teams according to their color..
+            KMeans: Trained classifier model
+
+        Raises:
+            ValueError: If kit colors are invalid or n_clusters is invalid
         """
+        if not kits_colors:
+            raise ValueError("Kit colors list cannot be empty")
+        if n_clusters < 2:
+            raise ValueError("Number of clusters must be at least 2")
+
         kits_kmeans = KMeans(
             n_clusters=n_clusters, n_init=10, init="k-means++", random_state=40
         )
@@ -231,22 +330,23 @@ class KitClassifier:
         self.kits_classifier = kits_kmeans
         return kits_kmeans
 
-    def _classify_kits(self, kits_colors):
-        """
-        Classifies the player into one of the two teams according to the player's kit
-        color
+    def _classify_kits(self, kits_colors: List[np.ndarray]) -> np.ndarray:
+        """Classify players into teams based on kit colors.
 
         Args:
-            kits_classifer: sklearn.cluster.KMeans object that can classify the
-            players kits into 2 teams according to their color.
-            kits_colors: List of np.array objects that contain the BGR values of
-            the colors of the kits of the players found in the current frame.
+            kits_colors: List of BGR kit colors to classify
 
         Returns:
-            team
-                np.array object containing a single integer that carries the player's
-                team number (0 or 1)
+            np.ndarray: Team labels (0 or 1) for each kit color
+
+        Raises:
+            ValueError: If kit colors are invalid or classifier not trained
         """
+        if self.kits_classifier is None:
+            raise ValueError("Classifier must be trained first")
+        if not kits_colors:
+            raise ValueError("Kit colors list cannot be empty")
+
         # Get raw predictions
         raw_predictions = self.kits_classifier.predict(kits_colors)
 
@@ -255,22 +355,18 @@ class KitClassifier:
         self.teams = teams
         return self.teams
 
-    def _get_left_team_label(self, players_boxes, teams):
-        """
-        Finds the label of the team that is on the left of the screen
+    def _get_left_team_label(self, players_boxes: List[Any], teams: np.ndarray) -> int:
+        """Find which team is on the left side of the frame.
 
         Args:
-            players_boxes: List of ultralytics.engine.results.Boxes objects that
-            contain various information about the bounding boxes of the players found
-            in the image.
-            kits_colors: List of np.array objects that contain the BGR values of
-            the colors of the kits of the players found in the current frame.
-            kits_clf: sklearn.cluster.KMeans object that can classify the players kits
-            into 2 teams according to their color.
+            players_boxes: Bounding boxes for detected players
+            teams: Team classification labels
+
         Returns:
-            left_team_label
-                Int that holds the number of the team that's on the left of the image
-                either (0 or 1)
+            int: Label of the team on the left (0 or 1)
+
+        Raises:
+            ValueError: If player boxes or team labels are empty/invalid
         """
         print("Getting left team label")
         self.left_team_label = 0
@@ -278,9 +374,11 @@ class KitClassifier:
         team_1 = []
 
         if len(players_boxes) == 0:
-            raise ValueError("Players boxes not found, run _get_players_boxes first")
+            raise ValueError("Players boxes list cannot be empty")
         if len(teams) == 0:
-            raise ValueError("Teams not found, run _classify_kits first")
+            raise ValueError("Teams array cannot be empty")
+        if len(players_boxes) != len(teams):
+            raise ValueError("Number of player boxes must match number of team labels")
 
         for i in range(len(players_boxes)):
             x1, y1, x2, y2 = map(int, players_boxes[i].xyxy[0].numpy())
@@ -292,6 +390,9 @@ class KitClassifier:
                 team_1.append(np.array([x1]))
             else:
                 continue
+
+        if not team_0 or not team_1:
+            raise ValueError("At least one player from each team must be present")
 
         team_0 = np.array(team_0)
         team_1 = np.array(team_1)

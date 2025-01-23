@@ -1,54 +1,118 @@
 from collections import defaultdict
-import numpy as np
-import cv2
-from sklearn.cluster import KMeans
-import tqdm
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple, Union
+
+import cv2
+import numpy as np
+from sklearn.cluster import KMeans
 from tqdm import tqdm
+
 from src.kit_classifier import KitClassifier
 from src.yolo_model import YoloModel
 
 
 class PlayerTracker:
+    """
+    Tracks and classifies players in football/soccer video footage.
+
+    This class handles player detection, team classification based on kit colors,
+    and visualization of results. It uses YOLOv8 for object detection and custom
+    color-based classification for team assignment.
+
+    Attributes:
+        yolo_model (YoloModel): Model for player detection
+        kit_classifier (KitClassifier): Classifier for team kit colors
+        class_names (List[str]): List of class names to detect
+        frame_detections (Dict): Stores detection results per frame
+    """
+
     def __init__(
         self,
-        model_path=None,
-        video_path=None,
-        class_names=None,
-    ):
+        model_path: Optional[Union[str, Path]] = None,
+        video_path: Optional[Union[str, Path]] = None,
+        class_names: Optional[List[str]] = None,
+    ) -> None:
         """
-        Initialize TeamDetector with model and parameters
+        Initialize PlayerTracker with detection model and parameters.
 
         Args:
-            model_path: Path to YOLO model (if None, loads default)
-            n_teams: Number of teams to detect (default 2)
+            model_path: Path to YOLO model weights
+            video_path: Path to input video file (optional)
+            class_names: List of class names to detect (e.g. ["Player", "Referee"])
+
+        Raises:
+            ValueError: If model_path is None or invalid
+            ValueError: If class_names is not a list of strings
         """
+        if not model_path:
+            raise ValueError("model_path cannot be None")
+        if class_names and not all(isinstance(name, str) for name in class_names):
+            raise ValueError("class_names must be a list of strings")
+
         self.yolo_model = YoloModel(model_path, class_names)
         self.kit_classifier = KitClassifier()
         self.class_names = class_names
+        self.frame_detections: Dict = {}
 
-    def process_video(self, video_processor):
+    def process_video(self, video_processor) -> Dict:
+        """
+        Process video to detect and classify players frame by frame.
+
+        Args:
+            video_processor: VideoProcessor instance for handling video I/O
+
+        Returns:
+            Dict containing frame-by-frame results with team counts and positions
+
+        Raises:
+            ValueError: If video_processor is None
+            ValueError: If grass color extraction fails
+            RuntimeError: If frame processing fails
+        """
+        if video_processor is None:
+            raise ValueError("video_processor cannot be None")
+
         print("Detecting objects per frame index")
 
         # Stage 1: Extract grass color from first frame
         print("Stage 1: Extracting grass color from first frame")
         frames = video_processor.get_frames_list()
+        if not frames:
+            raise ValueError("No frames found in video")
+
         print(frames[0])
-        first_frame = cv2.imread(str(frames[0]))  # Read first frame directly
+        first_frame = cv2.imread(str(frames[0]))
+        if first_frame is None:
+            raise ValueError("Could not read first frame")
+
         self.kit_classifier.extract_grass_color(first_frame)
 
-        # Step 2: Process one frame at a time
+        # Stage 2: Process one frame at a time
+        print(
+            "Stage 2: Processing frames: predicting football players, extracting kit colors"
+        )
         all_kit_colors = []
         all_player_boxes = []
         self.frame_detections = {}
+
         for frame_idx, frame in video_processor.iter_frames():
+            if frame is None:
+                raise RuntimeError(f"Could not read frame {frame_idx}")
+
             # Process current frame
             objects = self.yolo_model.detect(frame)
+            if objects is None:
+                raise RuntimeError(f"Detection failed for frame {frame_idx}")
 
             # Extract bounding boxes and player images
             player_imgs, player_boxes = self._get_players_boxes(objects)
+            if not player_imgs or not player_boxes:
+                continue
+
             # Extract kit colors in player images
             kit_colors = self.kit_classifier._get_kits_colors(player_imgs)
+            if not kit_colors:
+                continue
 
             self.frame_detections[frame_idx] = {
                 "yolo_result": objects,
@@ -58,6 +122,9 @@ class PlayerTracker:
 
             all_kit_colors.extend(kit_colors)
             all_player_boxes.extend(player_boxes)
+
+        if not all_kit_colors:
+            raise ValueError("No kit colors found in video")
 
         # Stage 3: Train Team Classifier
         print("Stage 3: Training team classifier...")
@@ -91,11 +158,33 @@ class PlayerTracker:
 
             current_box_idx += num_players
 
+        if not results:
+            raise ValueError("No results generated")
+
         return results
 
-    def _get_players_boxes(self, result):
-        """Get players boxes from YOLO result"""
-        # this can only run after
+    def _get_players_boxes(self, result) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+        """
+        Extract player bounding boxes and cropped images from YOLO detection results.
+
+        Args:
+            result: YOLO detection result object
+
+        Returns:
+            Tuple containing:
+                - List of cropped player images as numpy arrays
+                - List of bounding box coordinates
+
+        Raises:
+            ValueError: If result is None
+            ValueError: If player class name not found in class_names
+            ValueError: If no players detected in frame
+        """
+        if result is None:
+            raise ValueError("Detection result cannot be None")
+        if not self.class_names:
+            raise ValueError("class_names not initialized")
+
         players_imgs = []
         players_boxes = []
 
@@ -104,31 +193,59 @@ class PlayerTracker:
             raise ValueError(
                 f"Player label {player_label_name} not found in class names, got {self.class_names}"
             )
+
         for box in result.boxes:
             x1, y1, x2, y2 = map(int, box.xyxy[0].numpy())
+            if x1 >= x2 or y1 >= y2:
+                continue
             player_img = result.orig_img[y1:y2, x1:x2]
+            if player_img.size == 0:
+                continue
             players_imgs.append(player_img)
             players_boxes.append(box)
-        players_imgs = players_imgs
-        players_boxes = players_boxes
-        return (
-            players_imgs,
-            players_boxes,
-        )
+
+        if not players_imgs:
+            return [], []
+
+        return players_imgs, players_boxes
 
     def _draw_team_boxes(
         self,
         yolo_result,
-        player_boxes,
-        team_labels,
-    ):
+        player_boxes: List[np.ndarray],
+        team_labels: List[int],
+    ) -> Tuple[np.ndarray, int, int]:
+        """
+        Draw bounding boxes and labels on frame for visualization.
+
+        Args:
+            yolo_result: YOLO detection result object
+            player_boxes: List of player bounding boxes
+            team_labels: List of team labels for each player
+
+        Returns:
+            Tuple containing:
+                - Annotated frame as numpy array
+                - Count of left team players
+                - Count of right team players
+
+        Raises:
+            ValueError: If yolo_result is None
+            ValueError: If player_boxes is empty
+            ValueError: If team_labels is empty
+            ValueError: If lengths don't match
+        """
+        if yolo_result is None:
+            raise ValueError("yolo_result cannot be None")
+        if len(player_boxes) != len(team_labels):
+            raise ValueError("player_boxes and team_labels must have same length")
 
         team_colors = {
-            0: (0, 0, 255),
-            1: (255, 0, 0),
-            2: (0, 255, 0),
-            10: (255, 0, 255),
-        }  # 10 sohuld be purple
+            0: (0, 0, 255),  # Red for left team
+            1: (255, 0, 0),  # Blue for right team
+            2: (0, 255, 0),  # Green for referees
+            10: (255, 0, 255),  # Purple for others
+        }
 
         annotated_frame = yolo_result.orig_img.copy()
 
@@ -152,14 +269,11 @@ class PlayerTracker:
 
             # get the label name for this box
             label = int(box.cls.numpy()[0])
-            label_name = yolo_result.names.get(
-                label
-            )  # Use .get() for safe dictionary access
+            label_name = yolo_result.names.get(label)
             if label_name is None:
                 continue  # Skip if class name not found
 
             if label_name == "Player":
-                # # Store kit color for this player ID
                 if track_id is not None:
                     player_team_labels[track_id].append(team)
                     team = np.argmax(np.bincount(player_team_labels[track_id]))
@@ -179,10 +293,7 @@ class PlayerTracker:
                 else:
                     team_nr = 1
                 team_counts[team_nr] += 1
-            elif label_name == "Main Referee":
-                team_nr = 2
-                team_counts[team_nr] += 1
-            elif label_name == "Side Referee":
+            elif label_name in ["Main Referee", "Side Referee"]:
                 team_nr = 2
                 team_counts[team_nr] += 1
             else:
@@ -196,11 +307,11 @@ class PlayerTracker:
 
             # Draw text with track ID if available
             if team_nr == 0:
-                label = f"Team Left"
+                label = "Team Left"
             elif team_nr == 1:
-                label = f"Team Right"
+                label = "Team Right"
             elif team_nr == 2:
-                label = f"Referee"
+                label = "Referee"
             else:
                 label = label_name
             if track_id is not None:
