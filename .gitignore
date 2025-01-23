@@ -12,7 +12,6 @@ venv/
 # Project specific
 data/*
 !data/.gitkeep
-!data/sample.mp4
 output/*
 !output/.gitkeep
 # checkpoints/*
@@ -25,7 +24,7 @@ output/*
 .DS_Store
 
 # # Video and image files
-# *.mp4
+*.mp4
 # *.jpg
 # *.jpeg
 # *.png
