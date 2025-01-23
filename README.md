@@ -28,7 +28,7 @@ project/
 │ ├── kit_classifier.py
 │ ├── player_tracker.py
 │ ├── video_processor.py
-│ └── main.py
+├── main.py
 ├── Dockerfile
 ├── requirements.txt
 └── README.md
