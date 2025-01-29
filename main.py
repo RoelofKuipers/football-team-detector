@@ -1,9 +1,7 @@
 import argparse
 from pathlib import Path
-from src.video_processor import VideoProcessor
-from src.player_tracker import PlayerTracker
+from src.video_processor import process_football_video
 import sys
-import shutil
 
 # Default paths
 CUSTOM_MODEL_PATH = "checkpoints/yolo_football.pt"  # Path to custom weights
@@ -44,46 +42,18 @@ def main(args=None):
         args = sys.argv[1:]
     parsed_args = parse_args(args)
 
-    # Use the provided input path directly
     input_path = Path(parsed_args.input)
-
     if not input_path.exists():
         raise FileNotFoundError(f"Input video not found: {input_path}")
 
     output_dir = Path(parsed_args.output)
-    output_dir.mkdir(exist_ok=True)
-
-    frames_dir = output_dir / "input_frames"
-    output_frames_dir = output_dir / "output_frames"
-
-    frames_dir.mkdir(exist_ok=True)
-    output_frames_dir.mkdir(exist_ok=True)
-
     model_path = get_model_path()
-
-    video_processor = VideoProcessor(
-        video_path=input_path,
-        frames_dir=frames_dir,
-        output_frames_dir=output_frames_dir,
-    )
-
-    player_tracker = PlayerTracker(
-        model_path=model_path,
-        class_names=["Player", "Main Referee", "Side Referee", "GoalKeeper"],
-    )
 
     print(f"Processing video: {input_path}")
     print(f"Saving output to: {output_dir}")
 
-    video_processor.extract_frames()
-    results = player_tracker.process_video(video_processor)
-
-    # Remove the input_frames directory after processing
-    shutil.rmtree(frames_dir)
-
-    video_processor.save_results(results)
-    video_processor.save_video(
-        frames_pattern="frame_*.jpg", output_name="match_processed.mp4"
+    results, output_video = process_football_video(
+        video_path=input_path, output_dir=output_dir, model_path=model_path
     )
 
     print(f"\nProcessing complete! Output saved to {output_dir}")

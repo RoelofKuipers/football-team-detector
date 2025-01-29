@@ -102,27 +102,34 @@ The API will be available at `http://localhost:8000`
         -F "file=@path/to/video.mp4"
    ```
 
-2. **GET /results/{job_id}**
-   - Retrieve the processed video with annotations
-   - Use the job_id returned from the /upload-video endpoint
-   - Example using curl:
-   ```bash
-    curl "http://localhost:8000/results/{job_id}"
-   ```
-3. **GET /status/{job_id}**
-   - Check the status of a video processing job
-   - Returns job status
-   - Example using curl:
-   ```bash
-    curl "http://localhost:8000/status/{job_id}"
-   ```
-4. **GET /health**
+2. **GET /health**
    - Health check endpoint
    - Returns API status
    - Example using curl:
    ```bash
     curl "http://localhost:8000/health"
    ```
+3. **GET /jobs/{job_id}**
+   - Check the status of a video processing job
+   - Returns job status
+   - Example using curl:
+   ```bash
+    curl "http://localhost:8000/jobs/{job_id}"
+   ```
+4. **GET /jobs/{job_id}/video**
+   - Get the processed video
+   - Returns the processed video
+   - Example using curl:
+   ```bash
+    curl "http://localhost:8000/jobs/{job_id}/video"
+   ```
+5. **GET /jobs/{job_id}/results**
+   - Get the results of the video processing
+   - Returns the results of the video processing
+   - Example using curl:
+   ```bash
+    curl "http://localhost:8000/jobs/{job_id}/results"
+   ```  
 
 The API includes automatic documentation at:
 - Swagger UI: `http://localhost:8000/docs`
@@ -141,12 +148,17 @@ with open('data/sample.mp4', 'rb') as f:
 job_id = response.json()['job_id']
 
 # Check status
-status = requests.get(f'http://localhost:8000/status/{job_id}')
+status = requests.get(f'http://localhost:8000/jobs/{job_id}')
 print(status.json())
 
 # Get results when complete
-results = requests.get(f'http://localhost:8000/results/{job_id}')
+results = requests.get(f'http://localhost:8000/jobs/{job_id}/results')
 print(results.json())
+
+# Get video when complete
+video = requests.get(f'http://localhost:8000/jobs/{job_id}/video')
+with open('output/match_processed.mp4', 'wb') as f:
+    f.write(video.content)
 ```
 
 ## Requirements

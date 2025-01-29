@@ -4,6 +4,9 @@ from tqdm import tqdm
 import json
 from typing import Union, Dict, Any, List, Iterator, Tuple
 
+from src.player_tracker import PlayerTracker
+import shutil
+
 
 class VideoProcessor:
     def __init__(
@@ -212,3 +215,61 @@ class VideoProcessor:
 
         print(f"Results saved to {output_path}")
         return output_path
+
+
+# For now keep it as a standalone function rather than adding it to the VideoProcessor class because:
+# - It orchestrates multiple components (VideoProcessor and PlayerTracker)
+# - It follows the Single Responsibility Principle - VideoProcessor should focus on video I/O operations
+# - It's more flexible for testing and reuse
+# - It acts more as a workflow coordinator than a core video processing functionality
+def process_football_video(
+    video_path: Union[str, Path],
+    output_dir: Union[str, Path],
+    model_path: Union[str, Path],
+    cleanup_frames: bool = True,
+) -> Tuple[Dict, Path]:
+    """Process a football video and return results and output path.
+
+    Args:
+        video_path: Path to input video
+        output_dir: Directory for output files
+        model_path: Path to YOLO model weights
+        cleanup_frames: Whether to remove input frames after processing
+
+    Returns:
+        Tuple containing:
+            - Dictionary of processing results
+            - Path to output video file
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(exist_ok=True)
+
+    frames_dir = output_dir / "input_frames"
+    output_frames_dir = output_dir / "output_frames"
+
+    frames_dir.mkdir(exist_ok=True)
+    output_frames_dir.mkdir(exist_ok=True)
+
+    video_processor = VideoProcessor(
+        video_path=video_path,
+        frames_dir=frames_dir,
+        output_frames_dir=output_frames_dir,
+    )
+
+    player_tracker = PlayerTracker(
+        model_path=model_path,
+        class_names=["Player", "Main Referee", "Side Referee", "GoalKeeper"],
+    )
+
+    video_processor.extract_frames()
+    results = player_tracker.process_video(video_processor)
+
+    if cleanup_frames:
+        shutil.rmtree(frames_dir)
+
+    results_path = video_processor.save_results(results)
+    video_path = video_processor.save_video(
+        frames_pattern="frame_*.jpg", output_name="match_processed.mp4"
+    )
+
+    return results, video_path
