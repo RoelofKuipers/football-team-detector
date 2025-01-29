@@ -121,7 +121,7 @@ The API will be available at `http://localhost:8000`
    - Returns the processed video
    - Example using curl:
    ```bash
-    curl "http://localhost:8000/jobs/{job_id}/video"
+    curl "http://localhost:8000/jobs/{job_id}/video -o match_processed.mp4"
    ```
 5. **GET /jobs/{job_id}/results**
    - Get the results of the video processing
