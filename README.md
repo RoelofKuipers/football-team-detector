@@ -79,9 +79,75 @@ docker run --rm \
     -i /app/input_video/sample.mp4
 ```
 
-### API
+### API Usage
 
-[TO DO]
+The project includes a REST API for processing single frames. To start the API server:
+
+```bash
+python api.py
+```
+
+The API will be available at `http://localhost:8000`
+
+#### Endpoints:
+
+1. **POST /upload-video**
+   - Upload a video for player detection and team classification
+   - Returns detection results and path to annotated video
+   - Example using curl:
+   ```bash
+    curl -X POST "http://localhost:8000/upload-video" \
+        -H "accept: application/json" \
+        -H "Content-Type: multipart/form-data" \
+        -F "file=@path/to/video.mp4"
+   ```
+
+2. **GET /results/{job_id}**
+   - Retrieve the processed video with annotations
+   - Use the job_id returned from the /upload-video endpoint
+   - Example using curl:
+   ```bash
+    curl "http://localhost:8000/results/{job_id}"
+   ```
+3. **GET /status/{job_id}**
+   - Check the status of a video processing job
+   - Returns job status
+   - Example using curl:
+   ```bash
+    curl "http://localhost:8000/status/{job_id}"
+   ```
+4. **GET /health**
+   - Health check endpoint
+   - Returns API status
+   - Example using curl:
+   ```bash
+    curl "http://localhost:8000/health"
+   ```
+
+The API includes automatic documentation at:
+- Swagger UI: `http://localhost:8000/docs`
+
+
+#### Example Python Usage
+```python
+import requests
+
+# Upload video
+with open('data/sample.mp4', 'rb') as f:
+    response = requests.post(
+        'http://localhost:8000/upload-video',
+        files={'file': f}
+    )
+job_id = response.json()['job_id']
+
+# Check status
+status = requests.get(f'http://localhost:8000/status/{job_id}')
+print(status.json())
+
+# Get results when complete
+results = requests.get(f'http://localhost:8000/results/{job_id}')
+print(results.json())
+```
 
 ## Requirements
 - Python 3.11
