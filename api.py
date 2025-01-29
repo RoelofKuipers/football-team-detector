@@ -129,7 +129,6 @@ async def get_video(job_id: str):
         raise HTTPException(status_code=400, detail="Processing not complete")
 
     video_path = Path("output") / f"match_processed.mp4"
-    print(video_path)
     if not video_path.exists():
         raise HTTPException(
             status_code=404, detail=f"Video file not found {video_path}"

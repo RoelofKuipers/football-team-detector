@@ -7,6 +7,10 @@ import numpy as np
 from sklearn.cluster import KMeans, MiniBatchKMeans
 from tqdm import tqdm
 
+from src.logger import setup_logger
+
+logger = setup_logger(__name__)
+
 
 class KitClassifier:
     """Classifier for detecting and categorizing sports team kits/uniforms in images."""
@@ -380,7 +384,7 @@ class KitClassifier:
         Raises:
             ValueError: If player boxes or team labels are empty/invalid
         """
-        print("Getting left team label")
+        logger.info("Getting left team label")
         self.left_team_label = 0
         team_0 = []
         team_1 = []

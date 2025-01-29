@@ -9,6 +9,9 @@ from tqdm import tqdm
 
 from src.kit_classifier import KitClassifier
 from src.yolo_model import YoloModel
+from src.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 
 class PlayerTracker:
@@ -45,10 +48,13 @@ class PlayerTracker:
             ValueError: If class_names is not a list of strings
         """
         if not model_path:
+            logger.error("model_path cannot be None")
             raise ValueError("model_path cannot be None")
         if class_names and not all(isinstance(name, str) for name in class_names):
+            logger.error("class_names must be a list of strings")
             raise ValueError("class_names must be a list of strings")
 
+        logger.info(f"Initializing PlayerTracker with model {model_path}")
         self.yolo_model = YoloModel(model_path, class_names)
         self.kit_classifier = KitClassifier()
         self.class_names = class_names
@@ -70,25 +76,29 @@ class PlayerTracker:
             RuntimeError: If frame processing fails
         """
         if video_processor is None:
+            logger.error("video_processor cannot be None")
             raise ValueError("video_processor cannot be None")
 
-        print("Detecting objects per frame index")
+        logger.info("Starting video processing")
+        logger.info("Detecting objects per frame index")
 
         # Stage 1: Extract grass color from first frame
-        print("Stage 1: Extracting grass color from first frame")
+        logger.info("Stage 1: Extracting grass color from first frame")
         frames = video_processor.get_frames_list()
         if not frames:
+            logger.error("No frames found in video")
             raise ValueError("No frames found in video")
 
-        print(frames[0])
+        logger.debug(f"Processing first frame: {frames[0]}")
         first_frame = cv2.imread(str(frames[0]))
         if first_frame is None:
+            logger.error("Could not read first frame")
             raise ValueError("Could not read first frame")
 
         self.kit_classifier.extract_grass_color(first_frame)
 
         # Stage 2: Process one frame at a time
-        print(
+        logger.info(
             "Stage 2: Processing frames: predicting football players, extracting kit colors"
         )
         all_kit_colors = []
@@ -97,11 +107,13 @@ class PlayerTracker:
 
         for frame_idx, frame in video_processor.iter_frames():
             if frame is None:
+                logger.error(f"Could not read frame {frame_idx}")
                 raise RuntimeError(f"Could not read frame {frame_idx}")
 
             # Process current frame
             objects = self.yolo_model.detect(frame)
             if objects is None:
+                logger.error(f"Detection failed for frame {frame_idx}")
                 raise RuntimeError(f"Detection failed for frame {frame_idx}")
 
             # Extract bounding boxes and player images
@@ -124,16 +136,17 @@ class PlayerTracker:
             all_player_boxes.extend(player_boxes)
 
         if not all_kit_colors:
+            logger.error("No kit colors found in video")
             raise ValueError("No kit colors found in video")
 
         # Stage 3: Train Team Classifier
-        print("Stage 3: Training team classifier...")
+        logger.info("Stage 3: Training team classifier...")
         self.kit_classifier.train_classifier(all_kit_colors)
         all_team_labels = self.kit_classifier.classify_teams(all_kit_colors)
         self.kit_classifier.determine_left_team(all_player_boxes, all_team_labels)
 
         # Stage 4: Process Each Frame
-        print("Stage 4: Generating final output...")
+        logger.info("Stage 4: Generating final output...")
         results = {}
         current_box_idx = 0
 
@@ -159,8 +172,10 @@ class PlayerTracker:
             current_box_idx += num_players
 
         if not results:
+            logger.error("No results generated")
             raise ValueError("No results generated")
 
+        logger.info("Video processing completed successfully")
         return results
 
     def _get_players_boxes(self, result) -> Tuple[List[np.ndarray], List[np.ndarray]]:
@@ -181,8 +196,10 @@ class PlayerTracker:
             ValueError: If no players detected in frame
         """
         if result is None:
+            logger.error("Detection result cannot be None")
             raise ValueError("Detection result cannot be None")
         if not self.class_names:
+            logger.error("class_names not initialized")
             raise ValueError("class_names not initialized")
 
         players_imgs = []
@@ -190,6 +207,9 @@ class PlayerTracker:
 
         player_label_name = "Player"
         if player_label_name not in self.class_names:
+            logger.error(
+                f"Player label {player_label_name} not found in class names, got {self.class_names}"
+            )
             raise ValueError(
                 f"Player label {player_label_name} not found in class names, got {self.class_names}"
             )

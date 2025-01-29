@@ -3,6 +3,10 @@ from pathlib import Path
 from src.video_processor import process_football_video
 import sys
 
+from src.logger import setup_logger
+
+logger = setup_logger(__name__)
+
 # Default paths
 CUSTOM_MODEL_PATH = "checkpoints/yolo_football.pt"  # Path to custom weights
 
@@ -29,7 +33,7 @@ def get_model_path():
     """Check for custom model weights, otherwise use default YOLO weights"""
     custom_weights = Path(CUSTOM_MODEL_PATH)
     if custom_weights.exists():
-        print(f"Using custom model weights: {custom_weights}")
+        logger.info(f"Using custom model weights: {custom_weights}")
         return str(custom_weights)
     else:
         raise ValueError(
@@ -49,14 +53,14 @@ def main(args=None):
     output_dir = Path(parsed_args.output)
     model_path = get_model_path()
 
-    print(f"Processing video: {input_path}")
-    print(f"Saving output to: {output_dir}")
+    logger.info(f"Processing video: {input_path}")
+    logger.info(f"Saving output to: {output_dir}")
 
     results, output_video = process_football_video(
         video_path=input_path, output_dir=output_dir, model_path=model_path
     )
 
-    print(f"\nProcessing complete! Output saved to {output_dir}")
+    logger.info(f"\nProcessing complete! Output saved to {output_dir}")
 
 
 if __name__ == "__main__":
