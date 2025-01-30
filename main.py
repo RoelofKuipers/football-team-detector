@@ -1,12 +1,12 @@
 import argparse
 from pathlib import Path
-from src.video_processor import VideoProcessor
-from src.player_tracker import PlayerTracker
+from src.video_processor import process_football_video
 import sys
-import shutil
 
-# Default paths
-CUSTOM_MODEL_PATH = "checkpoints/yolo_football.pt"  # Path to custom weights
+from src.logger import setup_logger
+from config import settings
+
+logger = setup_logger(__name__)
 
 
 def parse_args(args):
@@ -22,16 +22,20 @@ def parse_args(args):
         help="Path to the input video file",
     )
     parser.add_argument(
-        "--output", "-o", type=str, default="output", help="Path to output directory"
+        "--output",
+        "-o",
+        type=str,
+        default=str(settings.OUTPUT_DIR),
+        help="Path to output directory",
     )
     return parser.parse_args(args)
 
 
 def get_model_path():
     """Check for custom model weights, otherwise use default YOLO weights"""
-    custom_weights = Path(CUSTOM_MODEL_PATH)
+    custom_weights = Path(settings.MODEL_PATH)
     if custom_weights.exists():
-        print(f"Using custom model weights: {custom_weights}")
+        logger.info(f"Using custom model weights: {custom_weights}")
         return str(custom_weights)
     else:
         raise ValueError(
@@ -44,49 +48,21 @@ def main(args=None):
         args = sys.argv[1:]
     parsed_args = parse_args(args)
 
-    # Use the provided input path directly
     input_path = Path(parsed_args.input)
-
     if not input_path.exists():
         raise FileNotFoundError(f"Input video not found: {input_path}")
 
     output_dir = Path(parsed_args.output)
-    output_dir.mkdir(exist_ok=True)
-
-    frames_dir = output_dir / "input_frames"
-    output_frames_dir = output_dir / "output_frames"
-
-    frames_dir.mkdir(exist_ok=True)
-    output_frames_dir.mkdir(exist_ok=True)
-
     model_path = get_model_path()
 
-    video_processor = VideoProcessor(
-        video_path=input_path,
-        frames_dir=frames_dir,
-        output_frames_dir=output_frames_dir,
+    logger.info(f"Processing video: {input_path}")
+    logger.info(f"Saving output to: {output_dir}")
+
+    results, output_video_path = process_football_video(
+        video_path=input_path, output_dir=output_dir, model_path=model_path
     )
 
-    player_tracker = PlayerTracker(
-        model_path=model_path,
-        class_names=["Player", "Main Referee", "Side Referee", "GoalKeeper"],
-    )
-
-    print(f"Processing video: {input_path}")
-    print(f"Saving output to: {output_dir}")
-
-    video_processor.extract_frames()
-    results = player_tracker.process_video(video_processor)
-
-    # Remove the input_frames directory after processing
-    shutil.rmtree(frames_dir)
-
-    video_processor.save_results(results)
-    video_processor.save_video(
-        frames_pattern="frame_*.jpg", output_name="match_processed.mp4"
-    )
-
-    print(f"\nProcessing complete! Output saved to {output_dir}")
+    logger.info(f"\nProcessing complete! Output saved to {output_dir}")
 
 
 if __name__ == "__main__":

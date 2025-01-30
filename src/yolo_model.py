@@ -1,4 +1,7 @@
 from ultralytics import YOLO
+from src.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 
 class YoloModel:
@@ -11,6 +14,7 @@ class YoloModel:
 
     def _load_model(self, model_path):
         if not model_path:
+            logger.error("Model path is required")
             raise ValueError("Model path is required")
         return YOLO(model_path)
 

@@ -4,6 +4,8 @@ __pycache__/
 *.so
 .env
 venv/
+logs/*  
+*.log
 
 # IDE
 .idea/
