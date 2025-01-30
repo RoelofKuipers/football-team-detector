@@ -49,7 +49,7 @@ Create virtual environment
 Install requirements
 `pip install -r requirements.txt`
 
-#### Usage
+### CLI Usage
 Video must be in the data directory
 ```
 python main.py -i video_name.mp4
@@ -65,8 +65,9 @@ docker build -t football-team-detector .
 docker run --rm \
     -v $(pwd)/path/to/your/video:/app/input_video:ro \
     -v $(pwd)/output:/app/output \
+    -v $(pwd)/checkpoints:/app/checkpoints:ro \
     football-team-detector \
-    -i /app/input_video/your_video.mp4
+    python main.py --input /app/input_video/your_video.mp4 --output /app/output
 ```
 
 **Example:** if your video filepath is 'data/sample.mp4'
@@ -75,8 +76,9 @@ you would run:
 docker run --rm \
     -v $(pwd)/data:/app/input_video:ro \
     -v $(pwd)/output:/app/output \
+    -v $(pwd)/checkpoints:/app/checkpoints:ro \
     football-team-detector \
-    -i /app/input_video/sample.mp4
+    python main.py --input /app/input_video/sample.mp4 --output /app/output
 ```
 
 ### API Usage
@@ -85,6 +87,11 @@ The project includes a REST API for processing single frames. To start the API s
 
 ```bash
 python api.py
+```
+
+or after building the docker image:
+```bash
+docker run --rm -p 8000:8000 football-team-detector
 ```
 
 The API will be available at `http://localhost:8000`
@@ -121,7 +128,7 @@ The API will be available at `http://localhost:8000`
    - Returns the processed video
    - Example using curl:
    ```bash
-    curl "http://localhost:8000/jobs/{job_id}/video -o match_processed.mp4"
+    curl -f "http://localhost:8000/jobs/{job_id}/video" -o match_processed.mp4
    ```
 5. **GET /jobs/{job_id}/results**
    - Get the results of the video processing
@@ -135,7 +142,7 @@ The API includes automatic documentation at:
 - Swagger UI: `http://localhost:8000/docs`
 
 
-#### Example Python Usage
+#### Example Python API Usage
 ```python
 import requests
 
