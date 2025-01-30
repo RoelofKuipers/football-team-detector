@@ -4,11 +4,9 @@ from src.video_processor import process_football_video
 import sys
 
 from src.logger import setup_logger
+from config import settings
 
 logger = setup_logger(__name__)
-
-# Default paths
-CUSTOM_MODEL_PATH = "checkpoints/yolo_football.pt"  # Path to custom weights
 
 
 def parse_args(args):
@@ -24,14 +22,18 @@ def parse_args(args):
         help="Path to the input video file",
     )
     parser.add_argument(
-        "--output", "-o", type=str, default="output", help="Path to output directory"
+        "--output",
+        "-o",
+        type=str,
+        default=str(settings.OUTPUT_DIR),
+        help="Path to output directory",
     )
     return parser.parse_args(args)
 
 
 def get_model_path():
     """Check for custom model weights, otherwise use default YOLO weights"""
-    custom_weights = Path(CUSTOM_MODEL_PATH)
+    custom_weights = Path(settings.MODEL_PATH)
     if custom_weights.exists():
         logger.info(f"Using custom model weights: {custom_weights}")
         return str(custom_weights)
@@ -56,7 +58,7 @@ def main(args=None):
     logger.info(f"Processing video: {input_path}")
     logger.info(f"Saving output to: {output_dir}")
 
-    results, output_video = process_football_video(
+    results, output_video_path = process_football_video(
         video_path=input_path, output_dir=output_dir, model_path=model_path
     )
 

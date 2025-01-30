@@ -1,11 +1,13 @@
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks, HTTPException
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks, HTTPException, Response
 from fastapi.responses import FileResponse
 import shutil
 from pathlib import Path
 import uvicorn
 from src.video_processor import process_football_video
+from config import settings
 import tempfile
 import json
+
 
 app = FastAPI(
     title="Football Video Analysis API",
@@ -15,42 +17,42 @@ app = FastAPI(
 # Store ongoing processes
 processing_jobs = {}
 
-# Initialize the model
-MODEL_PATH = "checkpoints/yolo_football.pt"
-
 
 def process_video(video_path: str, job_id: str):
     """Background task to process the video"""
     try:
-        # Create temporary directories
-        temp_dir = Path(tempfile.mkdtemp())
-        # Update job status
+        # Create job-specific directory
+        job_dir = settings.TEMP_BASE_DIR / job_id
+        job_dir.mkdir(exist_ok=True)
+
         processing_jobs[job_id]["status"] = "processing"
 
-        # Process video using shared function
-        results, _ = process_football_video(
+        # Process video
+        results, output_video_path = process_football_video(
             video_path=video_path,
-            output_dir=temp_dir,
-            model_path=MODEL_PATH,
+            output_dir=job_dir,
+            model_path=settings.MODEL_PATH,
             cleanup_frames=True,
         )
 
-        # Save results
-        results_path = Path("output") / f"{job_id}_results.json"
-        results_path.parent.mkdir(exist_ok=True)
-        with open(results_path, "w") as f:
-            json.dump(results, f)
+        # Store results
+        processing_jobs[job_id].update(
+            {
+                "status": "completed",
+                "results": results,
+                "output_video_path": str(output_video_path),
+                "filename": Path(output_video_path).name,
+            }
+        )
 
-        # Update job status
-        processing_jobs[job_id]["status"] = "completed"
-        processing_jobs[job_id]["results_path"] = str(results_path)
-
-        # Cleanup
-        shutil.rmtree(temp_dir)
+        # Clean up the original uploaded video
+        Path(video_path).unlink()
 
     except Exception as e:
         processing_jobs[job_id]["status"] = "failed"
         processing_jobs[job_id]["error"] = str(e)
+        if "job_dir" in processing_jobs[job_id]:
+            shutil.rmtree(processing_jobs[job_id]["job_dir"])
 
 
 @app.post("/upload-video")
@@ -117,26 +119,37 @@ async def get_results(job_id: str):
         raise HTTPException(status_code=500, detail=f"Error reading results: {str(e)}")
 
 
-# TODO: For local storage, for S3 we will use a presigned link
+# TODO: We use storage in memory now, for S3 we will use a presigned link
 @app.get("/jobs/{job_id}/video")
 async def get_video(job_id: str):
     """Get processed video"""
     if job_id not in processing_jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
+        return Response(status_code=404)
 
     job = processing_jobs[job_id]
-    if job["status"] != "completed":
-        raise HTTPException(status_code=400, detail="Processing not complete")
 
-    video_path = Path("output") / f"match_processed.mp4"
-    if not video_path.exists():
-        raise HTTPException(
-            status_code=404, detail=f"Video file not found {video_path}"
+    print("ROELOF")
+    print(job["output_video_path"])
+    print(job["filename"])
+
+    if job["status"] in ["failed", "starting", "processing"]:
+        return Response(status_code=400)
+
+    if "output_video_path" not in job:
+        return Response(status_code=404)
+
+    video_path = Path(job["output_video_path"])
+    if not video_path.exists() or video_path.stat().st_size == 0:
+        return Response(status_code=404)
+
+    try:
+        return FileResponse(
+            path=video_path,
+            filename=job["filename"],
+            media_type="video/mp4",
         )
-
-    return FileResponse(
-        path=video_path, filename=f"processed_{job['filename']}", media_type="video/mp4"
-    )
+    except Exception as e:
+        raise Response(status_code=500)
 
 
 @app.get("/health")
@@ -149,22 +162,3 @@ async def health_check():
 
 if __name__ == "__main__":
     uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)
-
-
-# import requests
-
-# # Upload video
-# with open('path/to/video.mp4', 'rb') as f:
-#     response = requests.post(
-#         'http://localhost:8000/upload-video',
-#         files={'file': f}
-#     )
-# job_id = response.json()['job_id']
-
-# # Check status
-# status = requests.get(f'http://localhost:8000/status/{job_id}')
-# print(status.json())
-
-# # Get results
-# results = requests.get(f'http://localhost:8000/results/{job_id}')
-# print(results.json())

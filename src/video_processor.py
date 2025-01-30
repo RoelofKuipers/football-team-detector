@@ -16,15 +16,13 @@ class VideoProcessor:
     def __init__(
         self,
         video_path: Union[str, Path],
-        frames_dir: Union[str, Path],
-        output_frames_dir: Union[str, Path],
+        output_dir: Union[str, Path],
     ) -> None:
         """Initialize VideoProcessor with paths for video processing.
 
         Args:
             video_path: Path to input video file
-            frames_dir: Directory to store extracted frames
-            output_frames_dir: Directory to store processed frames
+            output_dir: Directory to store output files
 
         Raises:
             ValueError: If video_path does not exist or is not a file
@@ -34,9 +32,14 @@ class VideoProcessor:
             logger.error(f"Video path {video_path} does not exist or is not a file")
             raise ValueError(f"Video path {video_path} does not exist or is not a file")
 
-        self.frames_dir = Path(frames_dir)  # for input frames
-        self.output_frames_dir = Path(output_frames_dir)  # for annotated frames
-        self.output_dir = Path("output")  # base output directory
+        self.output_dir = Path(output_dir)
+        self.frames_dir = output_dir / "input_frames"
+        self.output_frames_dir = output_dir / "output_frames"
+
+        self.frames_dir.mkdir(exist_ok=True)
+        self.output_frames_dir.mkdir(exist_ok=True)
+
+        self.frame_count = 0
 
         self.frame_count = 0
         self.fps: int = 0
@@ -271,16 +274,9 @@ def process_football_video(
     output_dir = Path(output_dir)
     output_dir.mkdir(exist_ok=True)
 
-    frames_dir = output_dir / "input_frames"
-    output_frames_dir = output_dir / "output_frames"
-
-    frames_dir.mkdir(exist_ok=True)
-    output_frames_dir.mkdir(exist_ok=True)
-
     video_processor = VideoProcessor(
         video_path=video_path,
-        frames_dir=frames_dir,
-        output_frames_dir=output_frames_dir,
+        output_dir=output_dir,
     )
 
     player_tracker = PlayerTracker(
@@ -289,16 +285,14 @@ def process_football_video(
     )
 
     video_processor.extract_frames()
-    results = player_tracker.process_video(video_processor)
-
-    if cleanup_frames:
-        logger.info("Cleaning up input frames")
-        shutil.rmtree(frames_dir)
+    results = player_tracker.process_video(
+        video_processor=video_processor, cleanup_frames=cleanup_frames
+    )
 
     results_path = video_processor.save_results(results)
-    video_path = video_processor.save_video(
+    output_video_path = video_processor.save_video(
         frames_pattern="frame_*.jpg", output_name="match_processed.mp4"
     )
 
     logger.info("Video processing completed successfully")
-    return results, video_path
+    return results, output_video_path
