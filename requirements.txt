@@ -5,7 +5,6 @@ scikit-learn==1.6.1
 tqdm==4.67.1
 
 # # API dependencies
-fastapi>=0.68.0
-python-multipart>=0.0.5
-uvicorn>=0.15.0
-
+fastapi==0.115.7
+uvicorn==0.34.0
+pydantic-settings==2.7.1
