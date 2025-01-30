@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 from sklearn.cluster import KMeans
 from tqdm import tqdm
+import shutil
 
 from src.kit_classifier import KitClassifier
 from src.yolo_model import YoloModel
@@ -60,7 +61,7 @@ class PlayerTracker:
         self.class_names = class_names
         self.frame_detections: Dict = {}
 
-    def process_video(self, video_processor) -> Dict:
+    def process_video(self, video_processor, cleanup_frames: bool = False) -> Dict:
         """
         Process video to detect and classify players frame by frame.
 
@@ -174,7 +175,9 @@ class PlayerTracker:
         if not results:
             logger.error("No results generated")
             raise ValueError("No results generated")
-
+        if cleanup_frames:
+            logger.info("Cleaning up input frames")
+            shutil.rmtree(video_processor.frames_dir)
         logger.info("Video processing completed successfully")
         return results
 
